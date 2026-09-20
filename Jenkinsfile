@@ -2,6 +2,11 @@
 pipeline {
     agent any
 
+    environment {
+        IMAGE_NAME = "aishwaryacs/netflix-clone"
+        KUBECONFIG = "/var/lib/jenkins/.kube/config"
+    }
+
     stages {
 
         stage('Checkout') {
@@ -11,23 +16,76 @@ pipeline {
             }
         }
 
-        stage('SonarQube Analysis') {
+        stage('Trivy Filesystem Scan') {
             steps {
-                script {
-                    def scannerHome = tool 'SonarQube-Scanner'
+                sh '''
+                    trivy fs --scanners vuln,secret --exit-code 0 .
+                '''
+            }
+        }
 
-                    withSonarQubeEnv('SonarQube') {
-                        sh """
-                            ${scannerHome}/bin/sonar-scanner \
-                            -Dsonar.projectKey=Netflix-Clone \
-                            -Dsonar.projectName=Netflix-Clone \
-                            -Dsonar.sources=.
-                        """
-                    }
+        stage('Docker Build') {
+            steps {
+                sh '''
+                    docker build \
+                    -t ${IMAGE_NAME}:${BUILD_NUMBER} \
+                    -t ${IMAGE_NAME}:latest \
+                    Application-Code
+                '''
+            }
+        }
+
+        stage('Trivy Image Scan') {
+            steps {
+                sh '''
+                    trivy image --severity HIGH,CRITICAL --exit-code 0 ${IMAGE_NAME}:${BUILD_NUMBER}
+                '''
+            }
+        }
+
+        stage('Docker Hub Push') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-creds',
+                        usernameVariable: 'DOCKER_USERNAME',
+                        passwordVariable: 'DOCKER_PASSWORD'
+                    )
+                ]) {
+                    sh '''
+                        echo "$DOCKER_PASSWORD" | docker login \
+                        -u "$DOCKER_USERNAME" \
+                        --password-stdin
+
+                        docker push ${IMAGE_NAME}:${BUILD_NUMBER}
+                        docker push ${IMAGE_NAME}:latest
+
+                        docker logout
+                    '''
                 }
             }
         }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                sh '''
+                    kubectl set image deployment/netflix-app \
+                    netflix-app=${IMAGE_NAME}:${BUILD_NUMBER}
+
+                    kubectl rollout status deployment/netflix-app \
+                    --timeout=120s
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Netflix CI/CD Pipeline completed successfully!'
+        }
+
+        failure {
+            echo 'Pipeline failed. Check the failed stage in Jenkins console output.'
+        }
     }
 }
-
-
