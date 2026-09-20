@@ -1,0 +1,9 @@
+.terraform*
+terraform.lock.hclnode_modules/
+dist/
+.env
+.env.*
+*.pem
+*.key
+terraform.tfstate
+terraform.tfstate.*
