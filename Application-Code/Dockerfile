@@ -31,10 +31,8 @@ WORKDIR /usr/share/nginx/html
 # Clean default nginx content
 RUN rm -rf ./*
 
-# Copy built app from builder
 COPY --from=builder /app/dist .
-
-# Expose HTTP port
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 
 # Run nginx
