@@ -1,4 +1,3 @@
-
 pipeline {
     agent any
 
@@ -26,12 +25,20 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                sh '''
-                    docker build \
-                    -t ${IMAGE_NAME}:${BUILD_NUMBER} \
-                    -t ${IMAGE_NAME}:latest \
-                    Application-Code
-                '''
+                withCredentials([
+                    string(
+                        credentialsId: 'tmdb-api-key',
+                        variable: 'TMDB_V3_API_KEY'
+                    )
+                ]) {
+                    sh '''
+                        docker build \
+                        --build-arg TMDB_V3_API_KEY="$TMDB_V3_API_KEY" \
+                        -t ${IMAGE_NAME}:${BUILD_NUMBER} \
+                        -t ${IMAGE_NAME}:latest \
+                        Application-Code
+                    '''
+                }
             }
         }
 
