@@ -1,4 +1,3 @@
-
 pipeline {
     agent any
 
@@ -11,15 +10,16 @@ pipeline {
             }
         }
 
-        stage('Build') {
+        stage('SonarQube Analysis') {
             steps {
-                echo 'Building Netflix Clone application...'
-            }
-        }
-
-        stage('SonarQube') {
-            steps {
-                echo 'SonarQube analysis will be configured next...'
+                withSonarQubeEnv('SonarQube') {
+                    sh '''
+                        sonar-scanner \
+                        -Dsonar.projectKey=Netflix-Clone \
+                        -Dsonar.projectName=Netflix-Clone \
+                        -Dsonar.sources=.
+                    '''
+                }
             }
         }
     }
