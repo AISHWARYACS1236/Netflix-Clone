@@ -1,5 +1,10 @@
+```groovy
 pipeline {
     agent any
+
+    tools {
+        sonarQube 'SonarQube-Scanner'
+    }
 
     stages {
 
@@ -24,3 +29,4 @@ pipeline {
         }
     }
 }
+```
